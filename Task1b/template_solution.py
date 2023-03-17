@@ -24,7 +24,7 @@ def transform_data(X):
     """
     X_transformed = np.zeros((700, 21))
     # TODO: Enter your code here
-    #HALLO
+    #HALLO was ist das
     assert X_transformed.shape == (700, 21)
     return X_transformed
 
