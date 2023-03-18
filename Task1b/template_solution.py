@@ -4,7 +4,6 @@
 import numpy as np
 import pandas as pd
 
-
 def transform_data(X):
     """
     This function transforms the 5 input features of matrix X (x_i denoting the i-th component of X) 
@@ -25,6 +24,7 @@ def transform_data(X):
     """
     X_transformed = np.zeros((700, 21))
     # TODO: Enter your code here
+    #HALLO was ist das
     assert X_transformed.shape == (700, 21)
     return X_transformed
 
