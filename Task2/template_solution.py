@@ -66,11 +66,6 @@ def data_loading():
 
     return X_train, y_train, X_test
 
-
-def custom_loss(y_true, y_pred):
-    return abs(r2_score(y_true=y_true, y_pred=y_pred)-0.9)
-
-
 def modeling_and_prediction(X_train, y_train, X_test):
     """
     This function defines the model, fits training data and then does the prediction with the test data 
@@ -114,8 +109,6 @@ def modeling_and_prediction(X_train, y_train, X_test):
         'alpha': [1e-2,1e-1, 1],
         'optimizer': ['fmin_l_bfgs_b', 'fmin_cg'],
     """
-
-    score = make_scorer(custom_loss, greater_is_better=False)
 
     params = [{
         'kernel': [(s**2)*Matern(length_scale=l, nu=n) for l in np.linspace(0.3, 0.3, 1) for n in [0.5] for s in np.linspace(1,1, 1)],
