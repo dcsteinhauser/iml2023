@@ -42,33 +42,24 @@ def data_loading():
     print(test_df.head(2))
 
     # Map Seasons to numbers
-    #season_map = {'winter':1.0, 'spring': 2.0, 'summer':3.0, 'autumn':4.0}
-    #train_df['season'] = train_df['season'].replace(season_map)
-    #test_df['season'] = test_df['season'].replace(season_map)
-
     train_df_dummies = pd.get_dummies(train_df['season'])
     train_merged = pd.concat([train_df, train_df_dummies], axis='columns')
     train_merged.drop(["season"],  inplace = True, axis = 'columns')
-
+    
     test_df_dummies = pd.get_dummies(test_df['season'])
     test_merged = pd.concat([test_df, test_df_dummies], axis='columns')
     test_merged.drop(["season"], inplace = True, axis = 'columns')
-    print(test_merged.head(2))
+
     #impute values
     imputer =  KNNImputer(n_neighbors=5)
-    imputed_train_df = imputer.fit_transform(train_merged)
-    X_test = imputer.fit_transform(test_merged)
-    print("Type: ", type(imputed_train_df))
-    print(imputed_train_df)
-    y_train = imputed_train_df[:,1]
-    X_train = np.delete(imputed_train_df, 1, axis=1)
+    imputed_trainset = imputer.fit_transform(train_merged)
+    imputed_testset = imputer.fit_transform(test_merged)
 
-    #preprocess
+    #slice values
+    y_train = imputed_trainset[:,1]
+    X_train = np.delete(imputed_trainset, 1, axis=1)
+    X_test = imputed_testset
 
-    #scaler = preprocessing.StandardScaler().fit(X_train)
-
-    #X_scaled = scaler.transform(X_train)
-    #X_testscaled = scaler.transform(X_test)
     assert (X_train.shape[1] == X_test.shape[1]) and (X_train.shape[0] == y_train.shape[0]) and (X_test.shape[0] == 100), "Invalid data shape"
 
 
@@ -127,9 +118,9 @@ def modeling_and_prediction(X_train, y_train, X_test):
     score = make_scorer(custom_loss, greater_is_better=False)
 
     params = [{
-        'kernel': [(s**2)*Matern(length_scale=l, nu=n) for l in np.linspace(0.3, 0.3, 1) for n in [0.5] for s in np.linspace(1.16,1.16, 1)],
-        'alpha': [1e-1],
-        'optimizer': ['fmin_l_bfgs_b', 'fmin_cg'],
+        'kernel': [(s**2)*Matern(length_scale=l, nu=n) for l in np.linspace(0.3, 0.3, 1) for n in [0.5] for s in np.linspace(1,1, 1)],
+        'alpha': [0.3],
+        'optimizer': ['fmin_l_bfgs_b'],
     }
     
    ]
