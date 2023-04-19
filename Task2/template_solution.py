@@ -28,6 +28,7 @@ def data_loading():
     """
     # Load training data
     train_df = pd.read_csv("train.csv")
+    train_df = train_df.dropna(subset=["price_CHF"])
     
     print("Training data:")
     print("Shape:", train_df.shape)
@@ -50,15 +51,15 @@ def data_loading():
     test_merged = pd.concat([test_df, test_df_dummies], axis='columns')
     test_merged.drop(["season"], inplace = True, axis = 'columns')
 
-    #impute values using KNN
-    imputer =  KNNImputer(n_neighbors=5)
-    imputed_trainset = imputer.fit_transform(train_merged)
-    imputed_testset = imputer.fit_transform(test_merged)
 
-    #slice values
-    y_train = imputed_trainset[:,1]
-    X_train = np.delete(imputed_trainset, 1, axis=1)
-    X_test = imputed_testset
+    y_train = train_merged["price_CHF"].values
+    X_train = train_merged.drop(columns=["price_CHF"]).values
+    X_test = test_merged.values
+    #impute values using KNN
+    imputer =  KNNImputer(n_neighbors=2)
+    X_train = imputer.fit_transform(X_train)
+    X_test = imputer.fit_transform(X_test)
+
 
     assert (X_train.shape[1] == X_test.shape[1]) and (X_train.shape[0] == y_train.shape[0]) and (X_test.shape[0] == 100), "Invalid data shape"
 
@@ -106,13 +107,22 @@ def modeling_and_prediction(X_train, y_train, X_test):
      'kernel': [RBF(length_scale=l) for l in np.logspace(-10, 2, 50)],
         'alpha': [1e-2,1e-1, 1],
         'optimizer': ['fmin_l_bfgs_b', 'fmin_cg'],
+
+
+        {
+        'kernel': [(s**2)*Matern(length_scale=l, nu=n) for l in np.linspace(0.3, 0.3, 1) for n in [0.5, 1.5, 2.5, 3] for s in np.linspace(1,1, 1)],
+        'alpha': [0.2],
+        'optimizer': ['fmin_l_bfgs_b'],
+        'normalize_y': [False],
+    },
     """
 
-    params = [{
-        'kernel': [(s**2)*Matern(length_scale=l, nu=n) for l in np.linspace(0.3, 0.3, 1) for n in [0.5] for s in np.linspace(1,1, 1)],
-        'alpha': [0.3],
+    params = [
+    {'kernel': [s*Matern(length_scale=l, nu=0.5)+RBF(length_scale=l) for l in np.linspace(0.5, 0.5, 1) for s in np.logspace(1e-6, 1000, 100)],
+        'alpha': [0.9*1e-1],
         'optimizer': ['fmin_l_bfgs_b'],
     }
+
     
    ]
 
