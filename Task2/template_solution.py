@@ -45,12 +45,12 @@ def data_loading():
     train_df_dummies = pd.get_dummies(train_df['season'])
     train_merged = pd.concat([train_df, train_df_dummies], axis='columns')
     train_merged.drop(["season"],  inplace = True, axis = 'columns')
-    
+
     test_df_dummies = pd.get_dummies(test_df['season'])
     test_merged = pd.concat([test_df, test_df_dummies], axis='columns')
     test_merged.drop(["season"], inplace = True, axis = 'columns')
 
-    #impute values
+    #impute values using KNN
     imputer =  KNNImputer(n_neighbors=5)
     imputed_trainset = imputer.fit_transform(train_merged)
     imputed_testset = imputer.fit_transform(test_merged)
@@ -61,8 +61,6 @@ def data_loading():
     X_test = imputed_testset
 
     assert (X_train.shape[1] == X_test.shape[1]) and (X_train.shape[0] == y_train.shape[0]) and (X_test.shape[0] == 100), "Invalid data shape"
-
-
 
     return X_train, y_train, X_test
 
