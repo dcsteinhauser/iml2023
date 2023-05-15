@@ -9,7 +9,7 @@ import os
 import torch
 
 from torchvision import transforms
-from torchvision.models import resnet50, ResNet50_Weights
+from torchvision.models import resnet50, ResNet50_Weights, alexnet, AlexNet_Weights, densenet121, DenseNet121_Weights
 import torchvision.datasets as datasets
 import torch.nn as nn
 import torch.nn.functional as F
@@ -32,16 +32,17 @@ def generate_embeddings():
     train_loader = DataLoader(dataset=train_dataset,
                               batch_size=64,
                               shuffle=False,
-                              pin_memory=True, num_workers=6)
+                              pin_memory=True, num_workers=4)
 
     # TODO: define a model for extraction of the embeddings (Hint: load a pretrained model,
     #  more info here: https://pytorch.org/vision/stable/models.html)
-    weights = ResNet50_Weights.DEFAULT
-    model = resnet50(weights=weights)
-    feature_extractor = torch.nn.Sequential(*list(model.children())[:-1])
+    weights = DenseNet121_Weights.DEFAULT
+    model = densenet121(weights=weights)
+    # print(model)
+    feature_extractor = torch.nn.Sequential(*list(model.children())[:-1], nn.AdaptiveAvgPool2d((1,1)))
     feature_extractor.eval()
     embeddings = []
-    embedding_size = 2048 # Dummy variable, replace with the actual embedding size once you 
+    embedding_size = 1024 # Dummy variable, replace with the actual embedding size once you 
     # pick your model
     num_images = len(train_dataset)
     embeddings = np.zeros((num_images, embedding_size))
@@ -49,8 +50,8 @@ def generate_embeddings():
         with torch.no_grad():
             print(f"processing batch no: {batch_no}")
             features = feature_extractor(image_batch)
+            # features = features.flatten(start_dim=1)
             print(features.shape)
-            # print(f"{features}")
             embeddings[batch_no*64:min((batch_no+1)*64,len(train_dataset))] = features.squeeze()
     # TODO: Use the model to extract the embeddings. Hint: remove the last layers of the 
     # model to access the embeddings the model generates. 
@@ -134,7 +135,7 @@ class Net(nn.Module):
         """
         super().__init__()
         self.layers = torch.nn.Sequential(
-            nn.Linear(2048*3, 128),
+            nn.Linear(1024*3, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.Dropout(0.5),
@@ -143,7 +144,7 @@ class Net(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(64,1),
-            nn.Softmax(dim=1)
+            nn.Sigmoid()
         )
 
     def forward(self, x):
@@ -180,7 +181,7 @@ def train_model(train_loader):
 
     for epoch in range(n_epochs):        
         for batch_no, [X, y] in enumerate(train_loader):
-            assert X.shape[1] == 2048*3
+            assert X.shape[1] == 1024*3
             num_train = int(len(X)*0.8)
             # print(X.shape)
 
