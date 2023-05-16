@@ -50,13 +50,12 @@ class Net(nn.Module):
         # and then used to extract features from the training and test data.
         self.encoder = nn.Sequential(
             nn.Linear(1000, 512),
-            # nn.BatchNorm1d(512),
+            nn.BatchNorm1d(512),
             nn.ReLU(),
             nn.Linear(512, 128),
-            # nn.BatchNorm1d(512),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.Linear(128,32),
-    
             nn.Linear(32,16)
 
         )
