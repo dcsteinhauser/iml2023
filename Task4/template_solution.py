@@ -3,6 +3,7 @@
 # First, we import necessary libraries:
 import pandas as pd
 import numpy as np
+import sys
 import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
@@ -11,8 +12,9 @@ from torch.optim import Adam
 from sklearn.model_selection import train_test_split
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.linear_model import ElasticNet, LinearRegression
+from sklearn.linear_model import ElasticNet, LinearRegression, LassoCV, Lasso
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error
 
 
 
@@ -47,17 +49,19 @@ class Net(nn.Module):
         # TODO: Define the architecture of the model. It should be able to be trained on pretraing data 
         # and then used to extract features from the training and test data.
         self.encoder = nn.Sequential(
-            nn.Linear(1000, 256),
-            # nn.BatchNorm1d(256),
+            nn.Linear(1000, 512),
+            # nn.BatchNorm1d(512),
             nn.ReLU(),
-            # nn.Dropout1d(0.2),
-            nn.Linear(256, 128),
-            # nn.BatchNorm1d(128),
+            nn.Linear(512, 128),
+            # nn.BatchNorm1d(512),
             nn.ReLU(),
-            nn.Linear(128,128),
+            nn.Linear(128,32),
+    
+            nn.Linear(32,16)
+
         )
         self.decoder = nn.Sequential(
-            nn.Linear(128,1)
+            nn.Linear(16,1)
         )
 
 
@@ -92,7 +96,7 @@ def make_feature_extractor(x, y, batch_size=256, eval_size=1000):
     """
     # Pretraining data loading
     in_features = x.shape[-1]
-    x_tr, x_val, y_tr, y_val = train_test_split(x, y, test_size=eval_size, random_state=0, shuffle=True)
+    x_tr, x_val, y_tr, y_val = train_test_split(x, y, test_size=eval_size, random_state=0, shuffle=False)
     x_tr, x_val = torch.tensor(x_tr, dtype=torch.float), torch.tensor(x_val, dtype=torch.float)
     y_tr, y_val = torch.tensor(y_tr, dtype=torch.float), torch.tensor(y_val, dtype=torch.float)
 
@@ -101,11 +105,11 @@ def make_feature_extractor(x, y, batch_size=256, eval_size=1000):
     model.train()
     optimizer = Adam(model.parameters(), lr=1e-3, weight_decay=0.001)
     
-    epochs = 10
+    epochs = 20
     train_data = TensorDataset(x_tr, y_tr)
     val_data = TensorDataset(x_val, y_val)
-    train_dataloader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
-    val_dataloader = DataLoader(dataset=val_data, batch_size=int(eval_size/epochs), shuffle=True)
+    train_dataloader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=False)
+    val_dataloader = DataLoader(dataset=val_data, batch_size=int(eval_size/epochs), shuffle=False)
     val_dataloader = iter(val_dataloader)
 
     # TODO: Implement the training loop. The model should be trained on the pretraining data. Use validation set 
@@ -124,7 +128,7 @@ def make_feature_extractor(x, y, batch_size=256, eval_size=1000):
         y_hat = model(X_test)
         loss = nn.functional.mse_loss(y_hat.squeeze(), y_test)
 
-        print(f'epoch: {epoch}, loss: {loss}')
+        print(f'epoch: {epoch}, loss on validation batch: {loss}')
 
 
 
@@ -187,14 +191,18 @@ def get_regression_model():
     # TODO: Implement the regression model. It should be able to be trained on the features extracted
     # by the feature extractor.
     model = LinearRegression()
+    # model = LassoCV(max_iter=5000, eps=0.0001, n_alphas=10000)
     # model = GaussianProcessRegressor()
     return model
 
 # Main function. You don't have to change this
 if __name__ == '__main__':
+    torch.manual_seed(0)
     # Load data
     x_pretrain, y_pretrain, x_train, y_train, x_test = load_data()
     print("Data loaded!")
+    test_size = int(sys.argv[1])
+
     # Utilize pretraining data by creating feature extractor which extracts lumo energy 
     # features from available initial features
     feature_extractor =  make_feature_extractor(x_pretrain, y_pretrain)
@@ -208,10 +216,16 @@ if __name__ == '__main__':
     # TODO: Implement the pipeline. It should contain feature extraction and regression. You can optionally
     # use other sklearn tools, such as StandardScaler, FunctionTransformer, etc.
     x_train_featurized = feature_maker.transform(x_train)
-    # scaler = StandardScaler()
-    # x_train_featurized = scaler.fit_transform(x_train_featurized)
-    # print(x_train_featurized)
-    regression_model.fit(x_train_featurized, y_train)
+    
+    if test_size > 0:
+        x_t_f_1, x_t_f_2, y_1, y_2 = train_test_split(x_train_featurized, y_train, test_size=test_size, shuffle=False)
+        regression_model.fit(x_t_f_1, y_1)
+        y_hat = regression_model.predict(x_t_f_2)
+        val_loss = mean_squared_error(y_2, y_hat)
+        print(f"val loss: {val_loss}")
+    else:
+        regression_model.fit(x_train_featurized, y_train)
+        
     x_test_featurized = feature_maker.transform(x_test.to_numpy())
     # x_test_featurized = scaler.transform(x_test_featurized)
     y_pred += regression_model.predict(x_test_featurized)
